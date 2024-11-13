@@ -1,29 +1,30 @@
-from pypanther import get_panther_rules, get_rules, register
+from pypanther import LogType, get_panther_rules, register
+from pypanther.rules.github import GitHubActionFailed
 
-from content import rules
-from content.helpers.custom_log_types import CustomLogType
-from content.overrides import aws_cloudtrail, aws_guardduty
+# Get all built-in GitHub Audit rules
+git_rules = get_panther_rules(log_types=[LogType.GITHUB_AUDIT])
 
-# Load base rules
-base_rules = get_panther_rules(
-    # log_types=[
-    #     LogType.AWS_CLOUDTRAIL,
-    #     LogType.AWS_GUARDDUTY,
-    #     LogType.PANTHER_AUDIT,
-    # ],
-    # default_severity=[
-    #     Severity.CRITICAL,
-    #     Severity.HIGH,
-    # ],
+# Override the default rule values to enable and increase the deduplication window
+GitHubActionFailed.override(
+    enabled=True,
+    dedup_period_minutes=60 * 8,
 )
-# Load all local custom rules
-custom_rules = get_rules(module=rules)
-# Omit rules with custom log types, since they must be present in the Panther instance for upload to work
-custom_rules = [rule for rule in custom_rules if not any(custom in rule.log_types for custom in CustomLogType)]
 
-# Apply overrides
-aws_cloudtrail.apply_overrides(base_rules)
-aws_guardduty.apply_overrides(base_rules)
+# Add a tag along the default tags
+GitHubActionFailed.extend(
+    tags=["CorpSec", "test"],
+)
 
-# Register all rules
-register(base_rules + custom_rules)
+# Set a required configuration on the rule for higher accuracy
+GitHubActionFailed.MONITORED_ACTIONS = {
+    "main_app": ["code_scanning"],
+}
+
+
+# Write a new filter function to check for bot activity
+def github_is_bot_filter(event):
+    return bool(event.get("actor_is_bot"))
+
+
+# Register and enable rules to be uploaded and tested
+register(git_rules)
