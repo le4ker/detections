@@ -1,0 +1,18 @@
+schema: Custom.AuthV2
+description: /var/log/auth events
+fields:
+  - name: host
+    required: true
+    type: string
+    description: The host
+  - name: ident
+    required: true
+    type: string
+    description: The identity
+  - name: message
+    required: true
+    type: string
+    description: The message
+  - name: pid
+    type: bigint
+    description: The Process IDhttps://pypi.org/project/pypanther/#history
